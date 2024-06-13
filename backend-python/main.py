@@ -43,6 +43,12 @@ def get_args(args: Union[Sequence[str], None] = None):
         default="",
         help="path to the model (default: None)",
     )
+    group.add_argument(
+        "--state",
+        type=str,
+        default="",
+        help="path to the state (default: None)",
+    )
     args = parser.parse_args(args)
 
     return args
@@ -126,6 +132,7 @@ def read_root():
 
 def load_model():
     model_path = global_var.get(global_var.Args).model
+    state_path = global_var.get(global_var.Args).state
     if model_path:
         global_var.set(global_var.Model_Status, global_var.ModelStatus.Offline)
         global_var.set(global_var.Model, None)
@@ -141,14 +148,18 @@ def load_model():
         global_var.set(global_var.Model_Status, global_var.ModelStatus.Loading)
 
         try:
+            rwkv_model = RWKV(model=model_path, strategy="cuda fp16", tokenizer="")
             global_var.set(
                 global_var.Model,
-                RWKV(model=model_path, strategy="cuda fp16", tokenizer=""),
+                rwkv_model
             )
 
             global_var.set(global_var.Model_Status, global_var.ModelStatus.Working)
 
             init_model_config = get_rwkv_config(global_var.get(global_var.Model))
+            if state_path:
+                init_model_config.state = state_path
+                load_rwkv_state(rwkv_model, state_path)
             global_var.set(global_var.Model_Config, init_model_config)
         except Exception as e:
             print(e)
