@@ -37,6 +37,12 @@ def get_args(args: Union[Sequence[str], None] = None):
         action="store_true",
         help="whether to use webgpu (default: False)",
     )
+    group.add_argument(
+        "--model",
+        type=str,
+        default="",
+        help="path to the model (default: None)",
+    )
     args = parser.parse_args(args)
 
     return args
@@ -118,6 +124,37 @@ def read_root():
     return {"Hello": "World!"}
 
 
+def load_model():
+    model_path = global_var.get(global_var.Args).model
+    if model_path:
+        global_var.set(global_var.Model_Status, global_var.ModelStatus.Offline)
+        global_var.set(global_var.Model, None)
+        torch_gc()
+
+        try:
+            state_cache.enable_state_cache()
+        except HTTPException:
+            pass
+
+        os.environ["RWKV_CUDA_ON"] = "0"
+
+        global_var.set(global_var.Model_Status, global_var.ModelStatus.Loading)
+
+        try:
+            global_var.set(
+                global_var.Model,
+                RWKV(model=model_path, strategy="cuda fp16", tokenizer=""),
+            )
+
+            global_var.set(global_var.Model_Status, global_var.ModelStatus.Working)
+        except Exception as e:
+            print(e)
+            import traceback
+
+            print(traceback.format_exc())
+            global_var.set(global_var.Model_Status, global_var.ModelStatus.Offline)
+
+
 def init():
     global_var.init()
     cmd_params = os.environ["RWKV_RUNNER_PARAMS"]
@@ -131,6 +168,9 @@ def init():
 
     if os.environ.get("ngrok_token") is not None:
         ngrok_connect()
+
+    # 加载模型
+    load_model()
 
 
 if __name__ == "__main__":
