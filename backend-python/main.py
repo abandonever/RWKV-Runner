@@ -147,6 +147,9 @@ def load_model():
             )
 
             global_var.set(global_var.Model_Status, global_var.ModelStatus.Working)
+
+            init_model_config = get_rwkv_config(global_var.get(global_var.Model))
+            global_var.set(global_var.Model_Config, init_model_config)
         except Exception as e:
             print(e)
             import traceback
