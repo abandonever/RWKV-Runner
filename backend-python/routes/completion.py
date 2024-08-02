@@ -153,6 +153,8 @@ async def eval_rwkv(
 
             response, prompt_tokens, completion_tokens = "", 0, 0
             completion_start_time = None
+            last_send_time = 0
+            gen_buf = ""
             for response, delta, prompt_tokens, completion_tokens in model.generate(
                 prompt,
                 stop=stop,
@@ -162,6 +164,14 @@ async def eval_rwkv(
                 if await request.is_disconnected():
                     break
                 if stream:
+                    gen_buf += delta
+                    curr_send_time = time.time()
+                    if last_send_time == 0 or curr_send_time - last_send_time >= 0.2:
+                        last_send_time = curr_send_time
+                        delta = gen_buf
+                        gen_buf = ""
+                    else:
+                        continue
                     yield json.dumps(
                         {
                             "object": (
@@ -188,6 +198,33 @@ async def eval_rwkv(
                             ],
                         }
                     )
+            if len(gen_buf) > 0:
+                yield json.dumps(
+                    {
+                        "object": (
+                            "chat.completion.chunk"
+                            if chat_mode
+                            else "text_completion"
+                        ),
+                        # "response": response,
+                        "model": model.name,
+                        "choices": [
+                            (
+                                {
+                                    "delta": {"content": gen_buf},
+                                    "index": 0,
+                                    "finish_reason": None,
+                                }
+                                if chat_mode
+                                else {
+                                    "text": gen_buf,
+                                    "index": 0,
+                                    "finish_reason": None,
+                                }
+                            )
+                        ],
+                    }
+                )
             # torch_gc()
             requests_num = requests_num - 1
             completion_end_time = time.time()
