@@ -166,7 +166,7 @@ async def eval_rwkv(
                 if stream:
                     gen_buf += delta
                     curr_send_time = time.time()
-                    if last_send_time == 0 or curr_send_time - last_send_time >= 0.2:
+                    if last_send_time == 0 or curr_send_time - last_send_time >= 0.1:
                         last_send_time = curr_send_time
                         delta = gen_buf
                         gen_buf = ""

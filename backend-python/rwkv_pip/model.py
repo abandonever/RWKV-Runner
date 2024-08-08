@@ -619,6 +619,7 @@ class RWKV(MyModule):
                                 "Note: You are running out of RAM. Get more CPU RAM. Now this will run much slower."
                             )
                     elif DEVICE != "cpu":
+                        torch.cuda.empty_cache()
                         w[x] = w[x].to(device=DEVICE).contiguous()
 
                     if (dd.stream) or (DEVICE != "cpu"):
